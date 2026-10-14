@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Studio - Generador de Imágenes</title>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #0f0f1a;
+            --bg-card: #151525;
+            --bg-card-hover: #1e1e35;
+            --bg-input: #0a0a14;
+            --border-color: #2a2a42;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b8;
+            --text-muted: #5a5a72;
+            --accent: #6c5ce7;
+            --accent-hover: #7d6ff0;
+            --accent-glow: rgba(108, 92, 231, 0.3);
+            --success: #00d2a0;
+            --success-glow: rgba(0, 210, 160, 0.3);
+            --warning: #fdcb6e;
+            --danger: #ff6b6b;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(108, 92, 231, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 50%, rgba(0, 210, 160, 0.05) 0%, transparent 60%),
+                var(--bg-primary);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            width: 98%;
+            max-width: 1400px;
+            height: 94vh;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        /* ====================================================
+           HEADER
+        ==================================================== */
+        .header {
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 15, 26, 0.9);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+            backdrop-filter: blur(12px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 900;
+            color: white;
+            box-shadow: 0 0 30px var(--accent-glow);
+            flex-shrink: 0;
+        }
+
+        .logo-text h1 {
+            font-size: 16px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 60%, var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+
+        .logo-text span {
+            font-size: 9px;
+            color: var(--text-muted);
+            -webkit-text-fill-color: var(--text-muted);
+            font-weight: 400;
+            display: block;
+            margin-top: -2px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: var(--text-secondary);
+            padding: 4px 12px;
+            background: var(--bg-card);
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 16px var(--success-glow);
+            animation: pulse-dot 2s infinite;
+        }
+        .status-dot.generating {
+            background: var(--warning);
+            animation: pulse-dot-fast 0.5s infinite;
+        }
+        .status-dot.error {
+            background: var(--danger);
+            animation: none;
+        }
+
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.4);
+                opacity: 0.6;
+            }
+        }
+        @keyframes pulse-dot-fast {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.6);
+                opacity: 0.4;
+            }
+        }
+
+        /* ====================================================
+           MAIN CONTENT - 2 COLUMNAS
+        ==================================================== */
+        .main-content {
+            flex: 1;
+            display: flex;
+            gap: 12px;
+            overflow: hidden;
+            padding: 10px 14px;
+        }
+
+        /* ====================================================
+           COLUMNA IZQUIERDA - CHAT
+        ==================================================== */
+        .chat-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            min-height: 100px;
+        }
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+
+        .chat-msg {
+            padding: 5px 9px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.5;
+            animation: fadeInUp 0.3s ease;
+        }
+        .chat-msg.user {
+            background: var(--accent);
+            color: white;
+            margin-left: 20%;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-msg.ai {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            margin-right: 20%;
+            border-bottom-left-radius: 4px;
+            color: var(--text-secondary);
+        }
+        .chat-msg .prompt-text {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .chat-msg .time {
+            font-size: 9px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== INPUT ROW ===== */
+        .input-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+            flex-shrink: 0;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            transition: border-color 0.3s ease;
+        }
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.08);
+        }
+
+        .prompt-input {
+            width: 100%;
+            min-height: 32px;
+            max-height: 50px;
+            resize: vertical;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 13px;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+        .prompt-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .btn-example {
+            padding: 2px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 9px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+        .btn-example:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--text-muted);
+        }
+
+        .btn-generate {
+            padding: 8px 18px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--accent), #8b7cf7);
+            color: white;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            white-space: nowrap;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        .btn-generate:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--accent-glow);
+        }
+        .btn-generate:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-generate .spinner {
+            display: none;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .btn-generate.loading .spinner {
+            display: block;
+        }
+        .btn-generate.loading .btn-text {
+            display: none;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ===== PROGRESS BAR ===== */
+        .progress-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            padding: 4px 0;
+        }
+
+        .progress-track {
+            flex: 1;
+            height: 4px;
+            background: var(--bg-primary);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--success));
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-fill.done {
+            width: 100%;
+        }
+        .progress-fill.error {
+            background: var(--danger);
+            width: 100%;
+        }
+
+        .progress-info {
+            font-size: 10px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            min-width: 70px;
+            text-align: right;
+        }
+        .progress-info .pct {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 12px;
+        }
+        .progress-info .pct.done {
+            color: var(--success);
+        }
+        .progress-info .pct.error {
+            color: var(--danger);
+        }
+        .progress-info .steps {
+            color: var(--text-secondary);
+        }
+
+        .progress-steps {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .pstep {
+            font-size: 8px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+        .pstep.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(108, 92, 231, 0.1);
+        }
+        .pstep.done {
+            border-color: var(--success);
+            color: var(--success);
+        }
+        .pstep.error {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* ====================================================
+           COLUMNA DERECHA - REPRODUCTOR + TIMELINE
+        ==================================================== */
+        .player-column {
+            flex: 0 0 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .player-container {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 280px;
+            position: relative;
+        }
+
+        .player-placeholder {
+            color: var(--text-muted);
+            text-align: center;
+            padding: 20px;
+        }
+        .player-placeholder .icon {
+            font-size: 36px;
+            margin-bottom: 6px;
+            opacity: 0.3;
+        }
+        .player-placeholder p {
+            font-size: 11px;
+            max-width: 160px;
+            line-height: 1.5;
+        }
+
+        .player-image-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+        }
+        .player-image-container.visible {
+            display: flex;
+        }
+        .player-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        /* ===== PLAYER CONTROLS ===== */
+        .player-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            flex-shrink: 0;
+        }
+        .player-controls button {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 2px 4px;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+        .player-controls button:hover {
+            color: var(--text-primary);
+        }
+        .player-controls button.active {
+            color: var(--accent);
+        }
+        .player-controls .time-info {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            min-width: 60px;
+            text-align: center;
+        }
+        .player-controls .progress-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 3px;
+            background: var(--border-color);
+            border-radius: 2px;
+            outline: none;
+            min-width: 30px;
+            cursor: pointer;
+        }
+        .player-controls .progress-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .player-controls .frame-counter {
+            font-size: 9px;
+            color: var(--text-muted);
+            min-width: 40px;
+            text-align: center;
+        }
+
+        /* ===== TIMELINE HORIZONTAL ===== */
+        .timeline-horizontal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 6px 8px;
+            flex-shrink: 0;
+            max-height: 90px;
+            user-select: none;
+        }
+
+        .timeline-h-scroll {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding: 4px 2px;
+            scroll-behavior: smooth;
+            min-height: 70px;
+            align-items: center;
+        }
+        .timeline-h-scroll::-webkit-scrollbar {
+            height: 4px;
+        }
+        .timeline-h-scroll::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 2px;
+        }
+        .timeline-h-scroll::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+
+        /* ===== TL ITEM CON ARRASTRE Y X ===== */
+        .tl-h-item {
+            flex-shrink: 0;
+            width: 64px;
+            height: 64px;
+            border-radius: 6px;
+            overflow: visible;
+            border: 2px solid var(--border-color);
+            cursor: grab;
+            transition: var(--transition);
+            position: relative;
+            background: var(--bg-primary);
+        }
+        .tl-h-item:active {
+            cursor: grabbing;
+        }
+        .tl-h-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.9);
+            z-index: 100;
+        }
+        .tl-h-item.drag-over {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: scale(1.05);
+        }
+        .tl-h-item:hover {
+            border-color: var(--text-muted);
+            transform: scale(1.05);
+        }
+        .tl-h-item.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .tl-h-item .tl-thumb {
+            width: 100%;
+            height: 100%;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .tl-h-item .tl-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        .tl-h-item .tl-index {
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            font-size: 8px;
+            font-weight: 700;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 0 4px;
+            border-radius: 3px;
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        /* ===== BOTÓN X PARA ELIMINAR ===== */
+        .tl-h-item .tl-delete {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--danger);
+            border: 2px solid var(--bg-secondary);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            line-height: 1;
+            font-family: inherit;
+            z-index: 5;
+        }
+        .tl-h-item:hover .tl-delete {
+            display: flex;
+        }
+        .tl-h-item .tl-delete:hover {
+            transform: scale(1.2);
+            background: #ff4444;
+        }
+
+        .tl-h-item .tl-play-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            opacity: 0;
+            transition: var(--transition);
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+        .tl-h-item:hover .tl-play-hint {
+            opacity: 0.6;
+        }
+
+        .tl-h-empty {
+            color: var(--text-muted);
+            font-size: 10px;
+            text-align: center;
+            padding: 15px 0;
+            width: 100%;
+        }
+
+        /* ====================================================
+           RESPONSIVE
+        ==================================================== */
+        @media (max-width: 1100px) {
+            .player-column {
+                flex: 0 0 400px;
+            }
+        }
+
+        @media (max-width: 860px) {
+            .main-content {
+                flex-direction: column;
+                padding: 8px 10px;
+                gap: 8px;
+            }
+            .chat-column {
+                max-height: 200px;
+            }
+            .player-column {
+                flex: 0 0 auto;
+                max-height: 420px;
+            }
+            .tl-h-item {
+                width: 56px;
+                height: 56px;
+            }
+            .timeline-horizontal {
+                max-height: 80px;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .app {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+                border: none;
+            }
+            .header {
+                padding: 6px 10px;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .player-column {
+                max-height: 350px;
+            }
+            .btn-generate {
+                padding: 6px 12px;
+                font-size: 11px;
+                height: 36px;
+            }
+            .input-wrapper {
+                padding: 6px 10px;
+            }
+            .prompt-input {
+                font-size: 12px;
+                min-height: 28px;
+            }
+            .progress-info {
+                font-size: 9px;
+                min-width: 50px;
+            }
+            .tl-h-item {
+                width: 48px;
+                height: 48px;
+            }
+            .timeline-horizontal {
+                max-height: 70px;
+            }
+            .player-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+                padding: 4px 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="bg-gradient"></div>
+
+    <div class="app">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">✦</div>
+                <div class="logo-text">
+                    <h1>AI Studio</h1>
+                    <span>Generador con Timeline</span>
+                </div>
+            </div>
+            <div class="status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Modelo listo</span>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+
+            <!-- COLUMNA IZQUIERDA - CHAT -->
+            <div class="chat-column">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-msg ai">
+                        ✨ Bienvenido<br>
+                        <span style="font-size:10px;color:var(--text-muted);">
+                            Genera imágenes y arrastra para reordenar<br>
+                            Pasa el mouse sobre la miniatura y usa ✕ para eliminar
+                        </span>
+                        <div class="time">Ahora</div>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-wrapper">
+                        <textarea class="prompt-input" id="promptInput" rows="1"
+                            placeholder="Describe tu imagen..."></textarea>
+                        <div class="input-actions">
+                            <button class="btn-example" onclick="setExample()">📝 Ej</button>
+                            <button class="btn-example" onclick="clearPrompt()">🗑️</button>
+                        </div>
+                    </div>
+                    <button class="btn-generate" id="generateBtn" onclick="generateImage()">
+                        <span class="spinner"></span>
+                        <span class="btn-text">Generar</span>
+                    </button>
+                </div>
+
+                <div class="progress-row" id="progressRow" style="display:none;">
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span class="pct" id="progressPct">0%</span>
+                        <span class="steps" id="progressSteps">0</span>
+                    </div>
+                    <div class="progress-steps" id="progressStepsContainer">
+                        <span class="pstep done">📥</span>
+                        <span class="pstep active">🎨</span>
+                        <span class="pstep">💾</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA -->
+            <div class="player-column">
+
+                <div class="player-container" id="playerContainer">
+                    <div class="player-placeholder" id="playerPlaceholder">
+                        <div class="icon">🎬</div>
+                        <p>Reproduce tu<br>secuencia de imágenes</p>
+                    </div>
+                    <div class="player-image-container" id="playerImageContainer">
+                        <img class="player-image" id="playerImage" alt="Imagen actual">
+                    </div>
+                </div>
+
+                <div class="player-controls">
+                    <button onclick="playTimeline()" id="playBtn" title="Reproducir (Espacio)">▶</button>
+                    <button onclick="prevFrame()" title="Anterior (←)">⏮</button>
+                    <span class="time-info" id="timeInfo">0:00 / 0:00</span>
+                    <input type="range" class="progress-slider" id="progressSlider" min="0" max="100" value="0"
+                        oninput="seekFrame(this.value)">
+                    <button onclick="nextFrame()" title="Siguiente (→)">⏭</button>
+                    <span class="frame-counter" id="frameCounter">0 / 0</span>
+                </div>
+
+                <!-- TIMELINE HORIZONTAL CON DRAG & DROP -->
+                <div class="timeline-horizontal">
+                    <div class="timeline-h-scroll" id="timelineHScroll">
+                        <div class="tl-h-empty">Sin imágenes. Genera una para empezar.</div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ========================================================
+        // STATE
+        // ========================================================
+        let timeline = [];
+        let currentFrameIndex = -1;
+        let isPlaying = false;
+        let isGenerating = false;
+        let progressStartTime = 0;
+        let progressTimer = null;
+        let playbackInterval = null;
+        let dragData = null;
+
+        // ========================================================
+        // DOM REFS
+        // ========================================================
+        const promptInput = document.getElementById('promptInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        const playerImage = document.getElementById('playerImage');
+        const playerImageContainer = document.getElementById('playerImageContainer');
+        const playerPlaceholder = document.getElementById('playerPlaceholder');
+        const timelineHScroll = document.getElementById('timelineHScroll');
+        const playBtn = document.getElementById('playBtn');
+        const progressSlider = document.getElementById('progressSlider');
+        const timeInfo = document.getElementById('timeInfo');
+        const frameCounter = document.getElementById('frameCounter');
+        const statusText = document.getElementById('statusText');
+        const statusDot = document.getElementById('statusDot');
+
+        const progressRow = document.getElementById('progressRow');
+        const progressFill = document.getElementById('progressFill');
+        const progressPct = document.getElementById('progressPct');
+        const progressSteps = document.getElementById('progressSteps');
+        const progressStepsContainer = document.getElementById('progressStepsContainer');
+
+        // ========================================================
+        // EXAMPLE PROMPTS
+        // ========================================================
+        const examples = [
+            'Paisaje montañoso al atardecer, colores cálidos',
+            'Retrato de mujer, estilo anime, colores pastel',
+            'Ciudad cyberpunk de noche, neones, lluvia',
+            'Dragón volando sobre castillo medieval',
+            'Gato sentado en una nube, arte digital'
+        ];
+
+        function setExample() {
+            promptInput.value = examples[Math.floor(Math.random() * examples.length)];
+            promptInput.focus();
+            promptInput.dispatchEvent(new Event('input'));
+        }
+
+        function clearPrompt() {
+            promptInput.value = '';
+            promptInput.focus();
+        }
+
+        // ========================================================
+        // CHAT
+        // ========================================================
+        function addChatMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = `chat-msg ${type}`;
+            div.innerHTML = text;
+            const time = document.createElement('div');
+            time.className = 'time';
+            time.textContent = new Date().toLocaleTimeString();
+            div.appendChild(time);
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // ========================================================
+        // PROGRESS
+        // ========================================================
+        function startProgress() {
+            progressStartTime = Date.now();
+            progressRow.style.display = 'flex';
+            progressFill.style.width = '0%';
+            progressFill.className = 'progress-fill';
+            progressPct.textContent = '0%';
+            progressPct.className = 'pct';
+            progressSteps.textContent = '0';
+
+            progressStepsContainer.innerHTML = `
+                <span class="pstep done">📥</span>
+                <span class="pstep active">🎨</span>
+                <span class="pstep">💾</span>
+            `;
+
+            statusDot.className = 'status-dot generating';
+            statusText.textContent = '⏳ Generando...';
+
+            if (progressTimer) clearInterval(progressTimer);
+            progressTimer = setInterval(() => {
+                const elapsed = (Date.now() - progressStartTime) / 1000;
+                progressSteps.textContent = Math.floor(elapsed / 2) + 1;
+            }, 500);
+        }
+
+        function updateProgress(percent) {
+            const p = Math.min(100, Math.max(0, percent));
+            progressFill.style.width = p + '%';
+            progressPct.textContent = Math.round(p) + '%';
+
+            const steps = progressStepsContainer.querySelectorAll('.pstep');
+            if (p < 30) {
+                steps[0].className = 'pstep done';
+                steps[1].className = 'pstep active';
+                steps[2].className = 'pstep';
+            } else if (p < 70) {
+                steps[0].className = 'pstep done';
+                steps[1].className = 'pstep done';
+                steps[2].className = 'pstep active';
+            } else if (p < 100) {
+                steps[0].className = 'pstep done';
+                steps[1].className = 'pstep done';
+                steps[2].className = 'pstep active';
+            }
+        }
+
+        function completeProgress(success) {
+            if (progressTimer) {
+                clearInterval(progressTimer);
+                progressTimer = null;
+            }
+
+            if (success) {
+                progressFill.className = 'progress-fill done';
+                progressPct.className = 'pct done';
+                progressPct.textContent = '100%';
+                progressFill.style.width = '100%';
+                statusDot.className = 'status-dot';
+                statusText.textContent = '✅ Modelo listo';
+
+                progressStepsContainer.innerHTML = `
+                    <span class="pstep done">📥</span>
+                    <span class="pstep done">🎨</span>
+                    <span class="pstep done">💾</span>
+                `;
+
+                setTimeout(() => {
+                    progressRow.style.display = 'none';
+                }, 1500);
+            } else {
+                progressFill.className = 'progress-fill error';
+                progressPct.className = 'pct error';
+                statusDot.className = 'status-dot error';
+                statusText.textContent = '❌ Error';
+
+                progressStepsContainer.innerHTML = `
+                    <span class="pstep done">📥</span>
+                    <span class="pstep error">❌</span>
+                `;
+            }
+        }
+
+        function setProgressError(error) {
+            if (progressTimer) {
+                clearInterval(progressTimer);
+                progressTimer = null;
+            }
+            progressFill.className = 'progress-fill error';
+            progressPct.className = 'pct error';
+            statusDot.className = 'status-dot error';
+            statusText.textContent = '❌ ' + error;
+        }
+
+        // ========================================================
+        // TIMELINE
+        // ========================================================
+        function addToTimeline(imageBase64, prompt) {
+            const item = {
+                id: Date.now(),
+                image: imageBase64,
+                prompt: prompt,
+                timestamp: new Date().toLocaleTimeString()
+            };
+            timeline.push(item);
+            renderTimeline();
+
+            if (timeline.length === 1) {
+                showFrame(0);
+            }
+        }
+
+        function renderTimeline() {
+            if (timeline.length === 0) {
+                timelineHScroll.innerHTML = `<div class="tl-h-empty">Sin imágenes. Genera una para empezar.</div>`;
+                return;
+            }
+
+            let html = '';
+            timeline.forEach((item, index) => {
+                const active = index === currentFrameIndex ? 'active' : '';
+                html += `
+                    <div class="tl-h-item ${active}" 
+                         draggable="true"
+                         data-index="${index}"
+                         onclick="showFrame(${index})"
+                         ondragstart="onDragStart(event, ${index})"
+                         ondragend="onDragEnd(event)"
+                         ondragover="onDragOver(event, ${index})"
+                         ondrop="onDrop(event, ${index})"
+                         title="${item.prompt}">
+                        <div class="tl-thumb">
+                            <img src="data:image/png;base64,${item.image}" alt="Frame ${index+1}">
+                        </div>
+                        <span class="tl-index">#${index+1}</span>
+                        <span class="tl-play-hint">▶</span>
+                        <button class="tl-delete" onclick="event.stopPropagation(); deleteFrame(${index})" title="Eliminar imagen">✕</button>
+                    </div>
+                `;
+            });
+
+            timelineHScroll.innerHTML = html;
+
+            // Scroll al elemento activo
+            const activeEl = timelineHScroll.querySelector('.tl-h-item.active');
+            if (activeEl) {
+                setTimeout(() => {
+                    activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }, 50);
+            }
+        }
+
+        // ========================================================
+        // DRAG & DROP
+        // ========================================================
+        function onDragStart(e, index) {
+            dragData = { fromIndex: index };
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index);
+            setTimeout(() => {
+                e.target.classList.add('dragging');
+            }, 0);
+        }
+
+        function onDragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.tl-h-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+        }
+
+        function onDragOver(e, index) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+
+            document.querySelectorAll('.tl-h-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+            if (dragData && dragData.fromIndex !== index) {
+                const target = e.currentTarget;
+                target.classList.add('drag-over');
+            }
+        }
+
+        function onDrop(e, toIndex) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+
+            if (!dragData) return;
+
+            const fromIndex = dragData.fromIndex;
+
+            if (fromIndex === toIndex) return;
+
+            // Reordenar array
+            const [movedItem] = timeline.splice(fromIndex, 1);
+            timeline.splice(toIndex, 0, movedItem);
+
+            // Si el frame actual estaba entre los reordenados, actualizar índice
+            if (currentFrameIndex === fromIndex) {
+                currentFrameIndex = toIndex;
+            } else if (currentFrameIndex > fromIndex && currentFrameIndex <= toIndex) {
+                currentFrameIndex--;
+            } else if (currentFrameIndex < fromIndex && currentFrameIndex >= toIndex) {
+                currentFrameIndex++;
+            }
+
+            dragData = null;
+            renderTimeline();
+
+            // Mantener la imagen mostrada si había una
+            if (currentFrameIndex >= 0 && currentFrameIndex < timeline.length) {
+                showFrame(currentFrameIndex);
+            } else if (timeline.length > 0) {
+                showFrame(0);
+            }
+        }
+
+        // ========================================================
+        // DELETE FRAME
+        // ========================================================
+        function deleteFrame(index) {
+            if (timeline.length <= 1) {
+                // Si es la última imagen, limpiar todo
+                timeline = [];
+                currentFrameIndex = -1;
+                playerImageContainer.classList.remove('visible');
+                playerPlaceholder.style.display = 'block';
+                stopPlayback();
+                renderTimeline();
+                return;
+            }
+
+            // Eliminar imagen
+            timeline.splice(index, 1);
+
+            // Ajustar índice actual
+            if (currentFrameIndex === index) {
+                // Si la imagen eliminada es la actual, mostrar la siguiente o anterior
+                if (index < timeline.length) {
+                    showFrame(index);
+                } else {
+                    showFrame(index - 1);
+                }
+            } else if (currentFrameIndex > index) {
+                currentFrameIndex--;
+                renderTimeline();
+                showFrame(currentFrameIndex);
+            } else {
+                renderTimeline();
+            }
+
+            // Si no hay más imágenes, resetear reproductor
+            if (timeline.length === 0) {
+                playerImageContainer.classList.remove('visible');
+                playerPlaceholder.style.display = 'block';
+                stopPlayback();
+            }
+        }
+
+        function showFrame(index) {
+            if (index < 0 || index >= timeline.length) return;
+
+            currentFrameIndex = index;
+            const item = timeline[index];
+
+            playerImage.src = `data:image/png;base64,${item.image}`;
+            playerImageContainer.classList.add('visible');
+            playerPlaceholder.style.display = 'none';
+
+            renderTimeline();
+            updatePlayerControls();
+        }
+
+        function updatePlayerControls() {
+            const total = timeline.length;
+            const current = currentFrameIndex + 1;
+            frameCounter.textContent = `${current} / ${total}`;
+
+            if (total > 1) {
+                const progress = (currentFrameIndex / (total - 1)) * 100;
+                progressSlider.value = progress;
+                timeInfo.textContent = `${formatTime(currentFrameIndex)} / ${formatTime(total - 1)}`;
+            } else {
+                progressSlider.value = 0;
+                timeInfo.textContent = `0:00 / 0:00`;
+            }
+        }
+
+        function formatTime(index) {
+            const total = timeline.length;
+            if (total === 0) return '0:00';
+            const seconds = Math.floor((index / total) * 30);
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // ========================================================
+        // PLAYER CONTROLS
+        // ========================================================
+        function playTimeline() {
+            if (timeline.length === 0) return;
+
+            if (isPlaying) {
+                stopPlayback();
+                return;
+            }
+
+            if (currentFrameIndex === -1 || currentFrameIndex === timeline.length - 1) {
+                showFrame(0);
+            }
+
+            isPlaying = true;
+            playBtn.textContent = '⏸';
+            playBtn.classList.add('active');
+
+            playbackInterval = setInterval(() => {
+                let next = currentFrameIndex + 1;
+                if (next >= timeline.length) {
+                    stopPlayback();
+                    return;
+                }
+                showFrame(next);
+            }, 1000);
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            playBtn.textContent = '▶';
+            playBtn.classList.remove('active');
+            if (playbackInterval) {
+                clearInterval(playbackInterval);
+                playbackInterval = null;
+            }
+        }
+
+        function prevFrame() {
+            if (timeline.length === 0) return;
+            stopPlayback();
+            const prev = Math.max(0, currentFrameIndex - 1);
+            showFrame(prev);
+        }
+
+        function nextFrame() {
+            if (timeline.length === 0) return;
+            stopPlayback();
+            const next = Math.min(timeline.length - 1, currentFrameIndex + 1);
+            showFrame(next);
+        }
+
+        function seekFrame(value) {
+            if (timeline.length === 0) return;
+            const index = Math.round((value / 100) * (timeline.length - 1));
+            showFrame(index);
+        }
+
+        // ========================================================
+        // GENERATE IMAGE
+        // ========================================================
+        async function generateImage() {
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                promptInput.focus();
+                promptInput.style.borderColor = 'var(--danger)';
+                setTimeout(() => promptInput.style.borderColor = '', 1500);
+                return;
+            }
+
+            if (isGenerating) return;
+
+            isGenerating = true;
+            generateBtn.classList.add('loading');
+            generateBtn.disabled = true;
+
+            addChatMessage(`🎨 <span class="prompt-text">"${prompt}"</span>`, 'user');
+            startProgress();
+
+            const promptText = prompt;
+            promptInput.value = '';
+            promptInput.dispatchEvent(new Event('input'));
+
+            try {
+                const resp = await fetch('/api/generar_imagen', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: promptText, guardar: false })
+                });
+
+                const data = await resp.json();
+
+                let progInterval = setInterval(() => {
+                    const current = parseFloat(progressPct.textContent) || 0;
+                    if (current < 90) {
+                        const inc = 1 + Math.random() * 3;
+                        updateProgress(Math.min(90, current + inc));
+                    }
+                }, 400);
+
+                if (data.task_id) {
+                    let completed = false,
+                        error = null,
+                        result = null;
+
+                    while (!completed && !error) {
+                        await sleep(500);
+                        const statusResp = await fetch(`/api/tarea/${data.task_id}`);
+                        const statusData = await statusResp.json();
+
+                        if (!statusData.success) { error = statusData.error; break; }
+
+                        const task = statusData.task;
+                        if (task.progress !== undefined) {
+                            updateProgress(task.progress);
+                        }
+
+                        if (task.status === 'completed' && task.result) {
+                            completed = true;
+                            result = task.result;
+                            break;
+                        } else if (task.status === 'error') {
+                            error = task.error || 'Error en la generación';
+                            break;
+                        }
+                    }
+
+                    clearInterval(progInterval);
+
+                    if (error) throw new Error(error);
+
+                    if (result && result.imagen) {
+                        addToTimeline(result.imagen, promptText);
+                        addChatMessage(`✅ Generada en ${result.tiempo?.toFixed(1) || '?'}s`, 'ai');
+                        completeProgress(true);
+                    } else {
+                        throw new Error('No se recibió la imagen');
+                    }
+
+                } else if (data.success && data.imagen) {
+                    clearInterval(progInterval);
+                    addToTimeline(data.imagen, promptText);
+                    addChatMessage(`✅ Generada en ${data.tiempo?.toFixed(1) || '?'}s`, 'ai');
+                    completeProgress(true);
+                } else {
+                    clearInterval(progInterval);
+                    throw new Error(data.error || 'Error al generar');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                setProgressError(error.message);
+                addChatMessage(`❌ ${error.message}`, 'ai');
+                completeProgress(false);
+            }
+
+            generateBtn.classList.remove('loading');
+            generateBtn.disabled = false;
+            isGenerating = false;
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        // ========================================================
+        // KEYBOARD SHORTCUTS
+        // ========================================================
+        document.addEventListener('keydown', function(e) {
+            if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+                if (e.key === ' ' || e.key === 'Space') {
+                    e.preventDefault();
+                    playTimeline();
+                }
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    prevFrame();
+                }
+                if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    nextFrame();
+                }
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (currentFrameIndex >= 0 && currentFrameIndex < timeline.length) {
+                        deleteFrame(currentFrameIndex);
+                    }
+                }
+            }
+        });
+
+        // ========================================================
+        // ENTER KEY
+        // ========================================================
+        promptInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                generateImage();
+            }
+        });
+
+        promptInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 50) + 'px';
+        });
+
+        // ========================================================
+        // STATUS CHECK
+        // ========================================================
+        async function checkStatus() {
+            try {
+                const resp = await fetch('/api/estado');
+                const data = await resp.json();
+                if (data.success && data.activo) {
+                    if (!isGenerating) {
+                        statusText.textContent = '✅ Modelo listo';
+                        statusDot.className = 'status-dot';
+                    }
+                } else {
+                    statusText.textContent = '⚠️ Modelo inactivo';
+                    statusDot.className = 'status-dot error';
+                }
+            } catch (e) {
+                statusText.textContent = '🔴 Sin conexión';
+                statusDot.className = 'status-dot error';
+            }
+        }
+
+        // ========================================================
+        // INIT
+        // ========================================================
+        promptInput.focus();
+        checkStatus();
+        setInterval(checkStatus, 10000);
+
+        console.log('✨ AI Studio - Generador con Drag & Drop y Eliminación');
+    </script>
+
+</body>
+
+</html>
